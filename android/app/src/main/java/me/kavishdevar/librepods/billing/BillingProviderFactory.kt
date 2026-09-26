@@ -18,16 +18,21 @@
 
 package me.kavishdevar.librepods.billing
 
+import android.app.Activity
 import android.content.Context
-import me.kavishdevar.librepods.BuildConfig
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 object BillingProviderFactory {
 
-    fun create(context: Context): BillingProvider {
-        return if (BuildConfig.PLAY_BUILD) {
-            PlayBillingProvider(context)
-        } else {
-            FOSSBillingProvider(context)
-        }
-    }
+    fun create(context: Context): BillingProvider = FreeBillingProvider
+}
+
+// All advanced features are free: premium is always unlocked, nothing to purchase.
+private object FreeBillingProvider : BillingProvider {
+    override val isPremium: StateFlow<Boolean> = MutableStateFlow(true)
+    override val price: StateFlow<String> = MutableStateFlow("")
+    override fun purchase(activity: Activity) {}
+    override fun queryPurchases() {}
+    override fun restorePurchases() {}
 }
