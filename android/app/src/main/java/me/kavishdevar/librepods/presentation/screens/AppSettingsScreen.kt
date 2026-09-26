@@ -24,7 +24,6 @@ import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +39,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.clearText
@@ -60,7 +58,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +81,6 @@ import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.presentation.components.AppInfoCard
 import me.kavishdevar.librepods.presentation.components.DeviceInfoCard
 import me.kavishdevar.librepods.presentation.components.StyledBottomSheet
-import me.kavishdevar.librepods.presentation.components.StyledButton
 import me.kavishdevar.librepods.presentation.components.StyledIconButton
 import me.kavishdevar.librepods.presentation.components.StyledInputField
 import me.kavishdevar.librepods.presentation.components.StyledList
@@ -96,13 +92,11 @@ import me.kavishdevar.librepods.presentation.theme.LocalDesignSystem
 import me.kavishdevar.librepods.presentation.theme.MaterialTypography
 import me.kavishdevar.librepods.presentation.viewmodel.AppSettingsViewModel
 import me.kavishdevar.librepods.utils.XposedState
-import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(
     viewModel: AppSettingsViewModel = viewModel(),
-    navigateToPurchase: () -> Unit,
     navigateToTroubleshooting: () -> Unit,
     navigateToOpenSourceLicenses: () -> Unit,
     navigateToReleaseNotesScreen: () -> Unit
@@ -135,62 +129,11 @@ fun AppSettingsScreen(
 
         val isDarkTheme = isSystemInDarkTheme()
 
-        if (!state.isPremium && state.connectionSuccessful) {
-            StyledButton(
-                onClick = navigateToPurchase,
-                backdrop = rememberLayerBackdrop(),
-                modifier = Modifier.fillMaxWidth(),
-                maxScale = 0.05f,
-                surfaceColor = MaterialTheme.colorScheme.primary
-            ) {
-                Text(
-                    stringResource(R.string.unlock_advanced_features),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-        if (state.timeUntilFOSSPremiumExpiry > 0L) {
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFF32829B), RoundedCornerShape(28.dp))
-                    .clip(RoundedCornerShape(28.dp))
-                    .clickable {
-                        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-                            data = "mailto:".toUri()
-                            putExtra(Intent.EXTRA_EMAIL, arrayOf("billing@kavish.xyz"))
-                            putExtra(Intent.EXTRA_SUBJECT, "LibrePods Play billing error")
-                            putExtra(
-                                Intent.EXTRA_TEXT,
-                                "Please enter your GitHub username to restore your premium access:\n\nGitHub username: "
-                            )
-                        }
-                        context.startActivity(emailIntent)
-                    }
-            ) {
-                Text(
-                    text = stringResource(
-                        R.string.play_foss_premium_banner, maxOf(1, TimeUnit.MILLISECONDS.toDays(state.timeUntilFOSSPremiumExpiry).toInt())
-                    ),
-                    modifier = Modifier
-                        .padding(16.dp),
-                    style = TextStyle(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        fontFamily = FontFamily(Font(R.font.sf_pro))
-                    )
-                )
-            }
-        }
-
         StyledToggle(
             title = stringResource(R.string.appearance),
             label = stringResource(R.string.use_material3e),
             checked = state.m3eEnabled,
             onCheckedChange = viewModel::setm3eEnabled,
-            enabled = state.isPremium
         )
 
         if (state.connectionSuccessful) {
@@ -200,7 +143,6 @@ fun AppSettingsScreen(
                 description = stringResource(R.string.show_phone_battery_in_widget_description),
                 checked = state.showPhoneBatteryInWidget,
                 onCheckedChange = viewModel::setShowPhoneBatteryInWidget,
-                enabled = state.isPremium
             )
 
             StyledList(title = stringResource(R.string.popup_animations)) {
@@ -227,7 +169,6 @@ fun AppSettingsScreen(
                     description = stringResource(R.string.conversational_awareness_pause_music_description),
                     checked = state.conversationalAwarenessPauseMusicEnabled,
                     onCheckedChange = viewModel::setConversationalAwarenessPauseMusicEnabled,
-                    enabled = state.isPremium
                 )
 
                 StyledToggle(
@@ -235,7 +176,6 @@ fun AppSettingsScreen(
                     description = stringResource(R.string.relative_conversational_awareness_volume_description),
                     checked = state.relativeConversationalAwarenessVolumeEnabled,
                     onCheckedChange = viewModel::setRelativeConversationalAwarenessVolumeEnabled,
-                    enabled = state.isPremium,
                 )
             }
 
@@ -259,7 +199,6 @@ fun AppSettingsScreen(
                     )
                 },
                 independent = true,
-                enabled = state.isPremium
             )
 
 //            if (!BuildConfig.PLAY_BUILD) {
@@ -286,7 +225,6 @@ fun AppSettingsScreen(
                     description = stringResource(R.string.disconnect_when_not_wearing_description),
                     checked = state.disconnectWhenNotWearing,
                     onCheckedChange = viewModel::setDisconnectWhenNotWearing,
-                    enabled = state.isPremium
                 )
             }
 
@@ -296,21 +234,18 @@ fun AppSettingsScreen(
                     description = stringResource(R.string.takeover_disconnected_desc),
                     checked = state.takeoverWhenDisconnected,
                     onCheckedChange = viewModel::setTakeoverWhenDisconnected,
-                    enabled = state.isPremium
                 )
                 StyledToggle(
                     label = stringResource(R.string.takeover_idle),
                     description = stringResource(R.string.takeover_idle_desc),
                     checked = state.takeoverWhenIdle,
                     onCheckedChange = viewModel::setTakeoverWhenIdle,
-                    enabled = state.isPremium
                 )
                 StyledToggle(
                     label = stringResource(R.string.takeover_music),
                     description = stringResource(R.string.takeover_music_desc),
                     checked = state.takeoverWhenMusic,
                     onCheckedChange = viewModel::setTakeoverWhenMusic,
-                    enabled = state.isPremium
                 )
 
                 StyledToggle(
@@ -318,7 +253,6 @@ fun AppSettingsScreen(
                     description = stringResource(R.string.takeover_call_desc),
                     checked = state.takeoverWhenCall,
                     onCheckedChange = viewModel::setTakeoverWhenCall,
-                    enabled = state.isPremium
                 )
             }
 
@@ -330,14 +264,12 @@ fun AppSettingsScreen(
                     description = stringResource(R.string.takeover_ringing_call_desc),
                     checked = state.takeoverWhenRingingCall,
                     onCheckedChange = viewModel::setTakeoverWhenRingingCall,
-                    enabled = state.isPremium
                 )
                 StyledToggle(
                     label = stringResource(R.string.takeover_media_start),
                     description = stringResource(R.string.takeover_media_start_desc),
                     checked = state.takeoverWhenMediaStart,
                     onCheckedChange = viewModel::setTakeoverWhenMediaStart,
-                    enabled = state.isPremium
                 )
             }
 
@@ -347,7 +279,6 @@ fun AppSettingsScreen(
                 description = stringResource(R.string.use_alternate_head_tracking_packets_description),
                 checked = state.useAlternateHeadTrackingPackets,
                 onCheckedChange = viewModel::setUseAlternateHeadTrackingPackets,
-                enabled = state.isPremium
             )
             Spacer(modifier = Modifier.height(16.dp))
         } else {
