@@ -1,2 +1,2 @@
 ## LibrePods root module changelog
-_[See here](https://github.com/kavishdevar/librepods/releases)_
+_[See here](https://github.com/max-nissa/librepods/releases)_

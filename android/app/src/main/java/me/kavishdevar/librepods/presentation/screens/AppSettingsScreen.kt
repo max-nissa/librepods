@@ -354,7 +354,7 @@ fun AppSettingsScreen(
                             else -> "GitHub"
                         }
                     )
-                    val url = "https://github.com/kavishdevar/librepods/issues/new" +
+                    val url = "https://github.com/max-nissa/librepods/issues/new" +
                         "?template=01-bug-report-android.yml" +
                         "&app-source=$appSource" +
                         "&app-version=$appVersion" +

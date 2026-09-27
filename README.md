@@ -10,17 +10,14 @@
 </picture>
 
 <div align="center" style="margin: 20px 0px;">
-<a href="https://github.com/kavishdevar/librepods/releases/latest">
-  <img src="https://img.shields.io/github/downloads/kavishdevar/librepods/total?label=GitHub%20Downloads" />
+<a href="https://github.com/max-nissa/librepods/releases/latest">
+  <img src="https://img.shields.io/github/downloads/max-nissa/librepods/total?label=GitHub%20Downloads" />
 </a>
-<a href="https://github.com/kavishdevar/librepods/actions/workflows/ci-android.yml">
-  <img src="https://github.com/kavishdevar/librepods/actions/workflows/ci-android.yml/badge.svg" />
+<a href="https://github.com/max-nissa/librepods/actions/workflows/ci-android.yml">
+  <img src="https://github.com/max-nissa/librepods/actions/workflows/ci-android.yml/badge.svg" />
 </a>
-<a href="https://github.com/kavishdevar/librepods/actions/workflows/ci-linux-rust.yml">
-  <img src="https://github.com/kavishdevar/librepods/actions/workflows/ci-linux-rust.yml/badge.svg" />
-</a>
-<a href="https://github.com/kavishdevar/librepods/issues">
-  <img src="https://img.shields.io/github/issues/kavishdevar/librepods" />  
+<a href="https://github.com/max-nissa/librepods/issues">
+  <img src="https://img.shields.io/github/issues/max-nissa/librepods" />  
 </a>
 <a href="https://discord.gg/HhG4ycVum4">
   <img src="https://img.shields.io/discord/1441416992027574375?logoColor=white&color=5865F2&label=Discord" />

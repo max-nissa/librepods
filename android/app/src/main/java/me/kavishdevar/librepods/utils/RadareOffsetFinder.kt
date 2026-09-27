@@ -34,6 +34,7 @@ import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @NoLiveLiterals
@@ -41,6 +42,8 @@ class RadareOffsetFinder(context: Context) {
     companion object {
         private const val TAG = "RadareOffsetFinder"
         private const val RADARE2_URL = "https://github.com/devnoname120/radare2/releases/download/5.9.8-android-aln/radare2-5.9.9-android-aarch64-aln.tar.gz"
+        // SHA-256 of the archive above. It is extracted and run as root, so never use it unverified.
+        private const val RADARE2_SHA256 = "a14893344b79877e0cb919c3946442df5bffbd44fbd9f725d238fd94c553d5dd"
         private const val HOOK_OFFSET_PROP = "persist.librepods.hook_offset"
         private const val CFG_REQ_OFFSET_PROP = "persist.librepods.cfg_req_offset"
         private const val CSM_CONFIG_OFFSET_PROP = "persist.librepods.csm_config_offset"
@@ -245,8 +248,12 @@ class RadareOffsetFinder(context: Context) {
 
     private suspend fun downloadRadare2TarballIfNeeded(): Boolean = withContext(Dispatchers.IO) {
         if (radare2TarballFile.exists() && radare2TarballFile.length() > 0) {
-            Log.d(TAG, "Radare2 tarball already downloaded to ${radare2TarballFile.absolutePath}")
-            return@withContext true
+            if (isRadare2TarballValid()) {
+                Log.d(TAG, "Radare2 tarball already downloaded to ${radare2TarballFile.absolutePath}")
+                return@withContext true
+            }
+            Log.w(TAG, "Cached radare2 tarball failed checksum verification, downloading again")
+            radare2TarballFile.delete()
         }
 
         try {
@@ -275,12 +282,31 @@ class RadareOffsetFinder(context: Context) {
             outputStream.close()
             inputStream.close()
 
+            if (!isRadare2TarballValid()) {
+                Log.e(TAG, "Downloaded radare2 tarball failed checksum verification")
+                radare2TarballFile.delete()
+                return@withContext false
+            }
+
             Log.d(TAG, "Download successful to ${radare2TarballFile.absolutePath}")
             return@withContext true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to download radare2 tarball", e)
             return@withContext false
         }
+    }
+
+    private fun isRadare2TarballValid(): Boolean {
+        val digest = MessageDigest.getInstance("SHA-256")
+        radare2TarballFile.inputStream().use { input ->
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+            while (input.read(buffer).also { bytesRead = it } != -1) {
+                digest.update(buffer, 0, bytesRead)
+            }
+        }
+        val actual = digest.digest().joinToString("") { "%02x".format(it) }
+        return actual == RADARE2_SHA256
     }
 
     private suspend fun extractRadare2Tarball(): Boolean = withContext(Dispatchers.IO) {

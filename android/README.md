@@ -20,7 +20,7 @@ If you are using a supported device/OS combination, you can install LibrePods fr
 
 ### GitHub Releases
 
-If you need xposed because of the [root requirement](#root-requirement), you will have to use the apk/zip from the [GitHub releases](https://github.com/kavishdevar/librepods/releases/latest).
+If you need xposed because of the [root requirement](#root-requirement), you will have to use the apk/zip from the [GitHub releases](https://github.com/max-nissa/librepods/releases/latest).
 
 ### As a system app (root module)
 
@@ -36,7 +36,7 @@ you can install the root module. This is optional and only provides extra featur
 
 ## Nightly/Development Builds
 
-Want to try the latest features before they're officially released? You can grab nightly builds from the [latest nightly release](https://github.com/kavishdevar/librepods/releases?q=nightly).
+Want to try the latest features before they're officially released? You can grab nightly builds from the [Android CI artifacts](https://github.com/max-nissa/librepods/actions/workflows/ci-android.yml).
 
 > [!WARNING]
 > These builds are automatically generated from the latest code and may contain new features and bug fixes that haven't been included in a stable release yet. However, please note that they may also be less stable than official releases, so use them at your own risk.
