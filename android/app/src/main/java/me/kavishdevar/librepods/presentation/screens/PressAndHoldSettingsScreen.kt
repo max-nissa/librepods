@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -38,7 +37,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,13 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.bluetooth.AACPManager
 import me.kavishdevar.librepods.data.StemAction
 import me.kavishdevar.librepods.presentation.components.ListItemOrientation
-import me.kavishdevar.librepods.presentation.components.StyledButton
 import me.kavishdevar.librepods.presentation.components.StyledList
 import me.kavishdevar.librepods.presentation.components.StyledListItem
 import me.kavishdevar.librepods.presentation.theme.DesignSystem
@@ -64,7 +60,7 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 @ExperimentalHazeMaterialsApi
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LongPress(viewModel: AirPodsViewModel, name: String, navigateToPurchase: () -> Unit) {
+fun LongPress(viewModel: AirPodsViewModel, name: String) {
     val state by viewModel.uiState.collectAsState()
 
     val modesByte = state.controlStates[AACPManager.Companion.ControlCommandIdentifiers.LISTENING_MODE_CONFIGS]?.get(0) ?: 0
@@ -114,26 +110,7 @@ fun LongPress(viewModel: AirPodsViewModel, name: String, navigateToPurchase: () 
                         StemAction.DIGITAL_ASSISTANT
                     )
                 },
-                enabled = state.isPremium
             )
-        }
-
-        if (!state.isPremium) {
-            Spacer(modifier = Modifier.height(24.dp))
-            StyledButton(
-                onClick = navigateToPurchase,
-                backdrop = rememberLayerBackdrop(),
-                modifier = Modifier.fillMaxWidth(),
-                maxScale = 0.05f,
-                surfaceColor = MaterialTheme.colorScheme.primary
-            ) {
-                Text(
-                    stringResource(R.string.unlock_advanced_features),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
         }
 
         if (longPressAction == StemAction.CYCLE_NOISE_CONTROL_MODES) {
