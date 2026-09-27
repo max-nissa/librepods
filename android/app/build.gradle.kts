@@ -72,9 +72,9 @@ android {
             }
         }
         debug {
-            if (releaseSigningAvailable) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            // Deliberately signed with the debug key, never the release key: a
+            // debuggable APK carrying the release signature could replace the
+            // release install and expose its data through run-as/JDWP.
             versionNameSuffix = "-debug"
             defaultConfig {
                 minSdk = 33

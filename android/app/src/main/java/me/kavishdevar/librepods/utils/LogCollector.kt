@@ -19,6 +19,7 @@
 package me.kavishdevar.librepods.utils
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -26,6 +27,13 @@ import java.io.File
 import java.io.InputStreamReader
 
 class LogCollector(private val context: Context) {
+    companion object {
+        private val MAC_ADDRESS = Regex("(?:[0-9A-Fa-f]{2}[:-]){4}([0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2})")
+
+        /** Masks Bluetooth addresses, keeping the last two bytes so devices stay distinguishable. */
+        fun redact(line: String): String = MAC_ADDRESS.replace(line) { "XX:XX:XX:XX:" + it.groupValues[1] }
+    }
+
     private var isCollecting = false
     private var logProcess: Process? = null
 
@@ -91,9 +99,9 @@ class LogCollector(private val context: Context) {
             }
 
             val command = if (uidFilter.isNotEmpty()) {
-                "su -c logcat --uid=$uidFilter -v threadtime"
+                arrayOf("su", "-c", "logcat --uid=$uidFilter -v threadtime")
             } else {
-                "su -c logcat -v threadtime"
+                arrayOf("su", "-c", "logcat -v threadtime")
             }
 
             val logs = StringBuilder()
@@ -104,7 +112,9 @@ class LogCollector(private val context: Context) {
                 var connectionDetected = false
 
                 while (isCollecting && reader.readLine().also { line = it } != null) {
-                    line?.let {
+                    line?.let { raw ->
+                        // Collected logs are meant to be shared in bug reports.
+                        val it = redact(raw)
                         if (it.contains("<LogCollector:")) {
                             logs.append("\n=============\n")
                         }
@@ -186,8 +196,7 @@ class LogCollector(private val context: Context) {
                 LogMarkerType.CUSTOM -> "<LogCollector:Custom:$details> [$timestamp]"
             }
 
-            val command = "log -t AirPodsService \"$marker\""
-            executeRootCommand(command)
+            Log.i("AirPodsService", marker)
         }
     }
 
@@ -201,7 +210,7 @@ class LogCollector(private val context: Context) {
     private suspend fun executeRootCommand(command: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                val process = Runtime.getRuntime().exec("su -c $command")
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
                 val output = StringBuilder()
                 var line: String?

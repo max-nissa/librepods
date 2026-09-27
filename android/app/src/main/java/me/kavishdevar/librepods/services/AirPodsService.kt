@@ -573,7 +573,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(externalBroadcastReceiver, externalBroadcastFilter, RECEIVER_EXPORTED)
+            registerReceiver(externalBroadcastReceiver, externalBroadcastFilter, RECEIVER_NOT_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(
                 externalBroadcastReceiver, externalBroadcastFilter
@@ -639,7 +639,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
             batteryChangedIntentFilter.addAction(AirPodsNotifications.DISCONNECT_RECEIVERS)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(
-                    BatteryChangedIntentReceiver, batteryChangedIntentFilter, RECEIVER_EXPORTED
+                    BatteryChangedIntentReceiver, batteryChangedIntentFilter, RECEIVER_NOT_EXPORTED
                 )
             } else {
                 @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(
@@ -729,7 +729,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(showIslandReceiver, showIslandIntentFilter, RECEIVER_EXPORTED)
+            registerReceiver(showIslandReceiver, showIslandIntentFilter, RECEIVER_NOT_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(
                 showIslandReceiver, showIslandIntentFilter
@@ -742,7 +742,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(connectionReceiver, deviceIntentFilter, RECEIVER_EXPORTED)
+            registerReceiver(connectionReceiver, deviceIntentFilter, RECEIVER_NOT_EXPORTED)
+            // Exported: these are protected broadcasts sent by the Bluetooth stack's own uid.
             registerReceiver(bluetoothReceiver, serviceIntentFilter, RECEIVER_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag") registerReceiver(
@@ -1082,10 +1083,9 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
             override fun onProximityKeysReceived(proximityKeys: ByteArray) {
                 val keys = aacpManager.parseProximityKeysResponse(proximityKeys)
-                Log.d("AirPodsParser", "Proximity keys: $keys")
+                Log.d("AirPodsParser", "Proximity keys received: ${keys.keys}")
                 sharedPreferences.edit {
                     for (key in keys) {
-                        Log.d("AirPodsParser", "Proximity key: ${key.key.name} = ${key.value}")
                         putString(key.key.name, Base64.encode(key.value))
                     }
                 }
@@ -2409,6 +2409,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         val intent = Intent(AirPodsNotifications.AIRPODS_CONNECTION_DETECTED)
                         intent.putExtra("name", name)
                         intent.putExtra("device", bluetoothDevice)
+                        intent.setPackage(context?.packageName)
                         context?.sendBroadcast(intent)
                     } else {
                         bluetoothDevice.fetchUuidsWithSdp()
@@ -2422,6 +2423,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         val intent = Intent(AirPodsNotifications.AIRPODS_CONNECTION_DETECTED)
                         intent.putExtra("name", name)
                         intent.putExtra("device", bluetoothDevice)
+                        intent.setPackage(context?.packageName)
                         context?.sendBroadcast(intent)
                     }
                 }
@@ -2709,7 +2711,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                                 )
                             }
                         }
-                        sendBroadcast(Intent(AirPodsNotifications.AIRPODS_L2CAP_CONNECTED))
+                        sendBroadcast(Intent(AirPodsNotifications.AIRPODS_L2CAP_CONNECTED).setPackage(packageName))
                     } catch (e: Exception) {
 //                        sharedPreferences.edit { putBoolean("connection_successful", false) }
                         Log.d(
@@ -2795,7 +2797,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
                                 aacpManager.receivePacket(data)
 
-                                if (!isHeadTrackingData(data)) {
+                                if (!isHeadTrackingData(data) && !aacpManager.isSensitivePacket(data)) {
                                     Log.d("AirPodsData", "Data received: $formattedHex")
                                     logPacket(data, "AirPods")
                                 }

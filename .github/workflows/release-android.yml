@@ -80,7 +80,7 @@ jobs:
     if: ${{ !cancelled() && needs.find-build.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
           run-id: ${{ needs.find-build.outputs.run-id || github.run_id }}
@@ -91,9 +91,8 @@ jobs:
           TAG: ${{ github.event.inputs.tag }}
         run: |
           mkdir dist
-          cp artifacts/apk-debug/*.apk "dist/LibrePods-FOSS-$TAG-debug.apk"
+          # Debug builds are debuggable and stay CI-only: never publish them.
           cp artifacts/apk-release/*.apk "dist/LibrePods-FOSS-$TAG-release.apk"
-          cp artifacts/root-module-zips/*-debug.zip "dist/LibrePods-FOSS-$TAG-debug.zip"
           cp artifacts/root-module-zips/*-release.zip "dist/LibrePods-FOSS-$TAG-release.zip"
           ls -l dist
 

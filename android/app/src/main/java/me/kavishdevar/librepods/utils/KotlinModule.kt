@@ -98,7 +98,8 @@ class KotlinModule: XposedModule() {
                     }
 
                     val uri = iconUri.toUri()
-                    if (!uri.toString().startsWith("android.resource://me.kavishdevar.librepods")) {
+                    // Exact match: a prefix check would also accept e.g. me.kavishdevar.librepods.evil.
+                    if (uri.scheme != "android.resource" || uri.authority != "me.kavishdevar.librepods") {
                         return@intercept chain.proceed()
                     }
 

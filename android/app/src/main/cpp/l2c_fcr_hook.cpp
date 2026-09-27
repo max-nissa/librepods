@@ -17,6 +17,7 @@
 */
 
 #include <android/log.h>
+#include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -56,27 +57,25 @@ uint8_t fake_l2c_fcr_chk_chan_modes(void *p_ccb) {
 }
 
 tBTA_STATUS fake_BTA_DmSetLocalDiRecord(tSDP_DI_RECORD *p_device_info, uint32_t *p_handle) {
-
     LOGI("fake_BTA_DmSetLocalDiRecord called");
 
-    if (original_BTA_DmSetLocalDiRecord &&
-        enableSdpHook.load(std::memory_order_relaxed))
-        original_BTA_DmSetLocalDiRecord(p_device_info, p_handle);
+    if (!original_BTA_DmSetLocalDiRecord)
+        return BTA_FAILURE;
 
-    LOGI("fake_BTA_DmSetLocalDiRecord: modifying vendor to 0x004C, vendor_id_source to 0x0001");
-
-    if (p_device_info) {
+    // Only announce Apple's vendor ID when the user enabled it, and register
+    // the record exactly once.
+    if (p_device_info && enableSdpHook.load(std::memory_order_relaxed)) {
+        LOGI("fake_BTA_DmSetLocalDiRecord: modifying vendor to 0x004C, vendor_id_source to 0x0001");
         p_device_info->vendor = 0x004C;
         p_device_info->vendor_id_source = 0x0001;
     }
 
-    LOGI("fake_BTA_DmSetLocalDiRecord: returning status %d",
-         original_BTA_DmSetLocalDiRecord ? original_BTA_DmSetLocalDiRecord(p_device_info, p_handle)
-                                         : BTA_FAILURE);
-    return original_BTA_DmSetLocalDiRecord ? original_BTA_DmSetLocalDiRecord(p_device_info,
-                                                                             p_handle)
-                                           : BTA_FAILURE;
+    tBTA_STATUS status = original_BTA_DmSetLocalDiRecord(p_device_info, p_handle);
+    LOGI("fake_BTA_DmSetLocalDiRecord: returning status %d", status);
+    return status;
 }
+
+static constexpr size_t MAX_DECOMPRESSED_SIZE = 256U << 20;
 
 static bool decompressXZ(const uint8_t *input, size_t input_size, std::vector<uint8_t> &output) {
 
@@ -124,6 +123,11 @@ static bool decompressXZ(const uint8_t *input, size_t input_size, std::vector<ui
 
         if (buf.out_pos == buf.out_size) {
             size_t old = output.size();
+            if (old >= MAX_DECOMPRESSED_SIZE) {
+                LOGE("decompressXZ: output exceeds %zu bytes, giving up", MAX_DECOMPRESSED_SIZE);
+                xz_dec_end(dec);
+                return false;
+            }
             LOGI("decompressXZ: resizing output to %zu", old * 2);
             output.resize(old * 2);
             buf.out = output.data();
@@ -155,7 +159,9 @@ static bool getLibraryPath(const char *name, std::string &out) {
             char *path = strchr(line, '/');
             if (path) {
                 out = path;
-                out.erase(out.find('\n'));
+                size_t newline = out.find('\n');
+                if (newline != std::string::npos)
+                    out.erase(newline);
                 LOGI("getLibraryPath: path found: %s", out.c_str());
                 fclose(fp);
                 return true;
@@ -194,113 +200,89 @@ static uintptr_t getModuleBase(const char *name) {
     return base;
 }
 
-static uint64_t
-findSymbolOffsetDynsym(const std::vector<uint8_t> &elf, const char *symbol_substring) {
+// The ELF parsing below reads system libraries, but still never trusts an
+// offset or size from the file: a malformed library must not crash the
+// Bluetooth process.
+static bool inBounds(const std::vector<uint8_t> &buf, uint64_t off, uint64_t size) {
+    return off <= buf.size() && size <= buf.size() - off;
+}
 
-    LOGI("findSymbolOffsetDynsym called with %s", symbol_substring);
-
+static const Elf64_Shdr *sectionHeaders(const std::vector<uint8_t> &elf, uint16_t &count) {
+    if (elf.size() < sizeof(Elf64_Ehdr))
+        return nullptr;
     auto *eh = reinterpret_cast<const Elf64_Ehdr *>(elf.data());
-    auto *shdr = reinterpret_cast<const Elf64_Shdr *>(
-            elf.data() + eh->e_shoff);
+    if (memcmp(eh->e_ident, ELFMAG, SELFMAG) != 0 || eh->e_ident[EI_CLASS] != ELFCLASS64)
+        return nullptr;
+    if (eh->e_shentsize != sizeof(Elf64_Shdr) || eh->e_shstrndx >= eh->e_shnum)
+        return nullptr;
+    if (!inBounds(elf, eh->e_shoff, (uint64_t) eh->e_shnum * sizeof(Elf64_Shdr)))
+        return nullptr;
+    auto *shdr = reinterpret_cast<const Elf64_Shdr *>(elf.data() + eh->e_shoff);
+    if (!inBounds(elf, shdr[eh->e_shstrndx].sh_offset, shdr[eh->e_shstrndx].sh_size))
+        return nullptr;
+    count = eh->e_shnum;
+    return shdr;
+}
 
-    const char *shstr = reinterpret_cast<const char *>(
-            elf.data() + shdr[eh->e_shstrndx].sh_offset);
+// Returns the NUL-terminated string at `index` of the string table `strtab`,
+// or nullptr if it falls outside the table.
+static const char *tableString(const std::vector<uint8_t> &elf, const Elf64_Shdr &strtab, uint64_t index) {
+    if (index >= strtab.sh_size)
+        return nullptr;
+    auto *str = reinterpret_cast<const char *>(elf.data() + strtab.sh_offset + index);
+    if (!memchr(str, 0, strtab.sh_size - index))
+        return nullptr;
+    return str;
+}
 
-    const Elf64_Shdr *dynsym = nullptr;
-    const Elf64_Shdr *dynstr = nullptr;
-
-    for (int i = 0; i < eh->e_shnum; ++i) {
-        const char *secname = shstr + shdr[i].sh_name;
-
-        if (!strcmp(secname, ".dynsym"))
-            dynsym = &shdr[i];
-        if (!strcmp(secname, ".dynstr"))
-            dynstr = &shdr[i];
+static const Elf64_Shdr *findSection(const std::vector<uint8_t> &elf, const char *name) {
+    uint16_t count = 0;
+    const Elf64_Shdr *shdr = sectionHeaders(elf, count);
+    if (!shdr)
+        return nullptr;
+    auto *eh = reinterpret_cast<const Elf64_Ehdr *>(elf.data());
+    const Elf64_Shdr &shstrtab = shdr[eh->e_shstrndx];
+    for (uint16_t i = 0; i < count; ++i) {
+        const char *secname = tableString(elf, shstrtab, shdr[i].sh_name);
+        if (secname && !strcmp(secname, name) && inBounds(elf, shdr[i].sh_offset, shdr[i].sh_size))
+            return &shdr[i];
     }
+    return nullptr;
+}
 
-    if (!dynsym || !dynstr) {
-        LOGE("findSymbolOffsetDynsym: dynsym or dynstr not found");
+static uint64_t findSymbol(const std::vector<uint8_t> &elf, const char *symtabName,
+                           const char *strtabName, const char *symbol_substring) {
+    LOGI("findSymbol called with %s in %s", symbol_substring, symtabName);
+
+    const Elf64_Shdr *symtab = findSection(elf, symtabName);
+    const Elf64_Shdr *strtab = findSection(elf, strtabName);
+    if (!symtab || !strtab) {
+        LOGE("findSymbol: %s or %s not found", symtabName, strtabName);
         return 0;
     }
 
-    auto *symbols = reinterpret_cast<const Elf64_Sym *>(
-            elf.data() + dynsym->sh_offset);
-
-    const char *strings = reinterpret_cast<const char *>(
-            elf.data() + dynstr->sh_offset);
-
-    size_t count = dynsym->sh_size / sizeof(Elf64_Sym);
-
-    LOGI("findSymbolOffsetDynsym: scanning %zu symbols", count);
+    auto *symbols = reinterpret_cast<const Elf64_Sym *>(elf.data() + symtab->sh_offset);
+    size_t count = symtab->sh_size / sizeof(Elf64_Sym);
+    LOGI("findSymbol: scanning %zu symbols", count);
 
     for (size_t i = 0; i < count; ++i) {
-        const char *name = strings + symbols[i].st_name;
-
-        if (strstr(name, symbol_substring) && ELF64_ST_TYPE(symbols[i].st_info) == STT_FUNC) {
-
-            LOGI("findSymbolOffsetDynsym: matched %s @ 0x%lx", name,
-                 (unsigned long) symbols[i].st_value);
-
+        const char *name = tableString(elf, *strtab, symbols[i].st_name);
+        if (name && strstr(name, symbol_substring) && ELF64_ST_TYPE(symbols[i].st_info) == STT_FUNC) {
+            LOGI("findSymbol: matched %s @ 0x%lx", name, (unsigned long) symbols[i].st_value);
             return symbols[i].st_value;
         }
     }
 
-    LOGI("findSymbolOffsetDynsym: no match for %s", symbol_substring);
+    LOGI("findSymbol: no match for %s", symbol_substring);
     return 0;
 }
 
+static uint64_t findSymbolOffsetDynsym(const std::vector<uint8_t> &elf, const char *symbol_substring) {
+    return findSymbol(elf, ".dynsym", ".dynstr", symbol_substring);
+}
+
 static uint64_t findSymbolOffset(const std::vector<uint8_t> &elf, const char *symbol_substring) {
-
-    LOGI("findSymbolOffset called with symbol_substring: %s", symbol_substring);
-
-    auto *eh = reinterpret_cast<const Elf64_Ehdr *>(elf.data());
-    auto *shdr = reinterpret_cast<const Elf64_Shdr *>(
-            elf.data() + eh->e_shoff);
-
-    const char *shstr = reinterpret_cast<const char *>(
-            elf.data() + shdr[eh->e_shstrndx].sh_offset);
-
-    const Elf64_Shdr *symtab = nullptr;
-    const Elf64_Shdr *strtab = nullptr;
-
-    LOGI("findSymbolOffset: parsing ELF sections");
-    for (int i = 0; i < eh->e_shnum; ++i) {
-        const char *secname = shstr + shdr[i].sh_name;
-        if (!strcmp(secname, ".symtab"))
-            symtab = &shdr[i];
-        if (!strcmp(secname, ".strtab"))
-            strtab = &shdr[i];
-    }
-
-    if (!symtab || !strtab) {
-        LOGE("findSymbolOffset: symtab or strtab not found");
-        return 0;
-    }
-    LOGI("findSymbolOffset: found symtab and strtab");
-
-    auto *symbols = reinterpret_cast<const Elf64_Sym *>(
-            elf.data() + symtab->sh_offset);
-
-    const char *strings = reinterpret_cast<const char *>(
-            elf.data() + strtab->sh_offset);
-
-    size_t count = symtab->sh_size / sizeof(Elf64_Sym);
-
-    LOGI("findSymbolOffset: scanning %zu symbols", count);
-    for (size_t i = 0; i < count; ++i) {
-        const char *name = strings + symbols[i].st_name;
-
-        if (strstr(name, symbol_substring) && ELF64_ST_TYPE(symbols[i].st_info) == STT_FUNC) {
-
-            LOGI("findSymbolOffset: matched symbol %s at 0x%lx", name,
-                 (unsigned long) symbols[i].st_value);
-
-            return symbols[i].st_value;
-        }
-    }
-
-    LOGI("findSymbolOffset: no match found for %s", symbol_substring);
-    return 0;
+    return findSymbol(elf, ".symtab", ".strtab", symbol_substring);
 }
 
 static bool hookLibrary(const char *libname) {
@@ -333,38 +315,31 @@ static bool hookLibrary(const char *libname) {
     LOGI("hookLibrary: opened file, size: %lld", (long long) st.st_size);
 
     std::vector<uint8_t> file(st.st_size);
-    read(fd, file.data(), st.st_size);
+    size_t total = 0;
+    while (total < file.size()) {
+        ssize_t n = read(fd, file.data() + total, file.size() - total);
+        if (n <= 0)
+            break;
+        total += (size_t) n;
+    }
     close(fd);
-
-    auto *eh = reinterpret_cast<Elf64_Ehdr *>(file.data());
-    auto *shdr = reinterpret_cast<Elf64_Shdr *>(
-            file.data() + eh->e_shoff);
-
-    const char *shstr = reinterpret_cast<const char *>(
-            file.data() + shdr[eh->e_shstrndx].sh_offset);
+    if (total != file.size()) {
+        LOGE("hookLibrary: short read (%zu of %zu bytes)", total, file.size());
+        return false;
+    }
 
     uint64_t chk_offset = 0;
     uint64_t sdp_offset = 0;
 
-    for (int i = 0; i < eh->e_shnum; ++i) {
-        if (!strcmp(shstr + shdr[i].sh_name, ".gnu_debugdata")) {
-            LOGI("hookLibrary: found .gnu_debugdata section");
+    if (const Elf64_Shdr *debugdata = findSection(file, ".gnu_debugdata")) {
+        LOGI("hookLibrary: found .gnu_debugdata section");
 
-            std::vector<uint8_t> compressed(file.begin() + shdr[i].sh_offset,
-                                            file.begin() + shdr[i].sh_offset + shdr[i].sh_size);
-
-            std::vector<uint8_t> decompressed;
-
-            if (decompressXZ(compressed.data(), compressed.size(), decompressed)) {
-
-                chk_offset = findSymbolOffset(decompressed, "l2c_fcr_chk_chan_modes");
-
-                sdp_offset = findSymbolOffset(decompressed, "BTA_DmSetLocalDiRecord");
-            } else {
-                LOGE("debugdata decompress failed");
-            }
-
-            break;
+        std::vector<uint8_t> decompressed;
+        if (decompressXZ(file.data() + debugdata->sh_offset, debugdata->sh_size, decompressed)) {
+            chk_offset = findSymbolOffset(decompressed, "l2c_fcr_chk_chan_modes");
+            sdp_offset = findSymbolOffset(decompressed, "BTA_DmSetLocalDiRecord");
+        } else {
+            LOGE("debugdata decompress failed");
         }
     }
 

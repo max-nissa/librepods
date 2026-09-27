@@ -21,7 +21,6 @@
 package me.kavishdevar.librepods
 
 // import me.kavishdevar.librepods.screens.Onboarding
-// import me.kavishdevar.librepods.utils.RadareOffsetFinder
 //import dagger.hilt.android.AndroidEntryPoint
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -120,7 +119,7 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error while unregistering receiver: $e")
         }
-        sendBroadcast(Intent(AirPodsNotifications.DISCONNECT_RECEIVERS))
+        sendBroadcast(Intent(AirPodsNotifications.DISCONNECT_RECEIVERS).setPackage(packageName))
         super.onDestroy()
     }
 
