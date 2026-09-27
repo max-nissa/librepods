@@ -248,6 +248,10 @@ class AACPManager {
         fun onCapabilitiesReceived(capabilities: List<Capability>)
     }
 
+    /** Packets whose content must never reach logs (they carry the proximity keys). */
+    fun isSensitivePacket(packet: ByteArray): Boolean =
+        packet.size > 4 && packet[4] == Opcodes.PROXIMITY_KEYS_RSP
+
     fun parseStemPressResponse(data: ByteArray): Pair<StemPressType, StemPressBudType> {
         Log.d(TAG, "Parsing Stem Press Response: ${data.joinToString(" ") { "%02X".format(it) }}")
         if (data.size != 8) {
@@ -343,11 +347,10 @@ class AACPManager {
         return sendDataPacket(controlPacket)
     }
 
+    // Proximity keys (IRK, ENC_KEY) are never logged: with them anyone can track
+    // the AirPods and decrypt their BLE advertisements, and logs get shared.
     fun parseProximityKeysResponse(data: ByteArray): Map<ProximityKeyType, ByteArray> {
-        Log.d(
-            TAG, "Parsing Proximity Keys Response: ${data.joinToString(" ") { "%02X".format(it) }}"
-        )
-        if (data.size < 4) {
+        if (data.size < 7) {
             throw IllegalArgumentException("Data array too short to parse Proximity Keys Response")
         }
         if (data[4] != Opcodes.PROXIMITY_KEYS_RSP) {
@@ -362,7 +365,7 @@ class AACPManager {
                 throw IllegalArgumentException("Data array too short to parse Proximity Keys Response")
             }
             val keyType = data[offset]
-            val keyLength = data[offset + 2].toInt()
+            val keyLength = data[offset + 2].toInt() and 0xFF
             Log.d(TAG, "Key Type: ${keyType.toString(16)}, Key Length: $keyLength")
             offset += 4
             if (offset + keyLength > data.size) {
@@ -373,15 +376,10 @@ class AACPManager {
             try {
                 keys[ProximityKeyType.fromByte(keyType)] = key
             } catch (e: Exception) {
-                Log.e(
-                    TAG, "incorrect key type received: $keyType, ${key.toHexString()}"
-                )
+                Log.e(TAG, "incorrect key type received: $keyType")
             }
             offset += keyLength
-            Log.d(
-                TAG, "Parsed Proximity Key: Type: ${keyType}, Length: $keyLength, Key: ${
-                key.joinToString(" ") { "%02X".format(it) }
-            }")
+            Log.d(TAG, "Parsed Proximity Key: Type: ${keyType}, Length: $keyLength")
         }
         return keys
     }
@@ -476,6 +474,10 @@ class AACPManager {
             }
 
             Opcodes.EAR_DETECTION -> {
+                if (packet.size < 8) {
+                    Log.w(TAG, "Received EAR_DETECTION packet too short: ${packet.size} bytes")
+                    return
+                }
                 callback?.onEarDetectionReceived(packet)
             }
 
@@ -1207,7 +1209,7 @@ class AACPManager {
 
     fun parseAudioSourceResponse(data: ByteArray): Pair<String, AudioSourceType> {
         Log.d(TAG, "Parsing Audio Source Response: ${data.joinToString(" ") { "%02X".format(it) }}")
-        if (data.size < 9) {
+        if (data.size < 13) {
             throw IllegalArgumentException("Data array too short to parse Audio Source Response")
         }
         if (data[4] != Opcodes.AUDIO_SOURCE) {
@@ -1226,7 +1228,7 @@ class AACPManager {
             TAG,
             "Parsing Connected Devices Response: ${data.joinToString(" ") { "%02X".format(it) }}"
         )
-        if (data.size < 8) {
+        if (data.size < 9) {
             throw IllegalArgumentException("Data array too short to parse Connected Devices Response")
         }
         if (data[4] != Opcodes.CONNECTED_DEVICES) {
@@ -1297,7 +1299,7 @@ class AACPManager {
             strings.add(str)
         }
 
-        strings.removeAt(0) // I'm too lazy to adjust, just removing the first empty string
+        strings.removeFirstOrNull() // I'm too lazy to adjust, just removing the first empty string
 
         return AirPodsInformation(
             name = strings.getOrNull(0) ?: "",
