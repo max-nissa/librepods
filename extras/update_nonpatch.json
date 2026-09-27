@@ -1,6 +1,6 @@
 {
-  "version": "v1.0.0-rc3-free",
-  "versionCode": 64,
-  "zipUrl": "https://github.com/max-nissa/librepods/releases/download/v1.0.0-rc3-free/LibrePods-FOSS-v1.0.0-rc3-free-debug.zip",
+  "version": "v1.0.0-rc4-free",
+  "versionCode": 65,
+  "zipUrl": "https://github.com/max-nissa/librepods/releases/download/v1.0.0-rc4-free/LibrePods-FOSS-v1.0.0-rc4-free-debug.zip",
   "changelog": "https://raw.githubusercontent.com/max-nissa/librepods/main/extras/CHANGELOG.md"
 }
