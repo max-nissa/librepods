@@ -1,7 +1,12 @@
 name: Android Release
 
-# Manually cut a GitHub release: builds the FOSS APKs from `ref`, creates the
-# tag (if it does not exist yet) and publishes a release with the APKs attached.
+# Manually cut a GitHub release: creates the tag (if it does not exist yet)
+# and publishes a release with the FOSS APKs and root module zips attached.
+#
+# Nothing is rebuilt when Android CI already built `ref` on a push to main:
+# the release reuses that run's artifacts. Otherwise (older commit whose
+# artifacts expired, another branch, or `rebuild` checked) it runs Android CI
+# for `ref` first and uses the fresh artifacts.
 
 on:
   workflow_dispatch:
@@ -21,68 +26,86 @@ on:
         description: Mark as pre-release
         type: boolean
         default: true
+      rebuild:
+        description: Rebuild instead of reusing the Android CI artifacts
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
-  release:
+  find-build:
     runs-on: ubuntu-latest
-    env:
-      RELEASE_KEYSTORE_FILE: ${{ secrets.RELEASE_KEYSTORE_FILE }}
+    outputs:
+      sha: ${{ steps.find.outputs.sha }}
+      run-id: ${{ steps.find.outputs.run-id }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-          ref: ${{ github.event.inputs.ref }}
-      - uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools
-      - name: Accept Licenses
-        run: yes | sdkmanager --licenses
-      - name: Install NDK
-        run: sdkmanager "ndk;30.0.14904198"
-
-      # Optional signing, same as Android CI: without the secrets the release
-      # APK is left unsigned.
-      - name: Configure release signing
-        if: env.RELEASE_KEYSTORE_FILE != ''
+      - name: Look for an Android CI build of this commit
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ github.event.inputs.ref }}
+          REBUILD: ${{ github.event.inputs.rebuild }}
         run: |
-          echo "$RELEASE_KEYSTORE_FILE" | base64 --decode > android/release.keystore
-          cat <<EOF > android/local.properties
-          RELEASE_STORE_FILE=../release.keystore
-          RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
-          RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
-          EOF
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$REF" --jq .sha)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          run_id=
+          if [ "$REBUILD" != "true" ]; then
+            # Only push runs: PR runs never get the signing secrets.
+            run_id=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci-android.yml \
+              --commit "$sha" --event push --status success --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -n "$run_id" ] && gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" \
+              --jq '.artifacts[] | select(.expired | not) | .name' | grep -qx apk-release; then
+            echo "Reusing Android CI run $run_id for $sha"
+          else
+            echo "No reusable Android CI build for $sha, building it"
+            run_id=
+          fi
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
 
-      - name: Build APKs
-        run: ./gradlew assembleFossDebug assembleFossRelease
-        working-directory: android
+  build:
+    needs: find-build
+    if: needs.find-build.outputs.run-id == ''
+    uses: ./.github/workflows/ci-android.yml
+    with:
+      ref: ${{ needs.find-build.outputs.sha }}
+    secrets: inherit
 
-      - name: Collect APKs
+  release:
+    needs: [find-build, build]
+    if: ${{ !cancelled() && needs.find-build.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          run-id: ${{ needs.find-build.outputs.run-id || github.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Collect artifacts
         env:
           TAG: ${{ github.event.inputs.tag }}
         run: |
           mkdir dist
-          cp android/app/build/outputs/apk/foss/debug/*.apk "dist/LibrePods-FOSS-$TAG-debug.apk"
-          cp android/app/build/outputs/apk/foss/release/*.apk "dist/LibrePods-FOSS-$TAG-release.apk"
+          cp artifacts/apk-debug/*.apk "dist/LibrePods-FOSS-$TAG-debug.apk"
+          cp artifacts/apk-release/*.apk "dist/LibrePods-FOSS-$TAG-release.apk"
+          cp artifacts/root-module-zips/*-debug.zip "dist/LibrePods-FOSS-$TAG-debug.zip"
+          cp artifacts/root-module-zips/*-release.zip "dist/LibrePods-FOSS-$TAG-release.zip"
           ls -l dist
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.event.inputs.tag }}
+          SHA: ${{ needs.find-build.outputs.sha }}
           NOTES: ${{ github.event.inputs.notes }}
           PRERELEASE: ${{ github.event.inputs.prerelease }}
         run: |
-          args=(--target "$(git rev-parse HEAD)" --title "LibrePods $TAG")
+          args=(-R "$GITHUB_REPOSITORY" --target "$SHA" --title "LibrePods $TAG")
           if [ -n "$NOTES" ]; then
             printf '%s\n' "$NOTES" > notes.md
             args+=(--notes-file notes.md)
@@ -92,4 +115,4 @@ jobs:
           if [ "$PRERELEASE" = "true" ]; then
             args+=(--prerelease)
           fi
-          gh release create "$TAG" "${args[@]}" dist/*.apk
+          gh release create "$TAG" "${args[@]}" dist/*.apk dist/*.zip

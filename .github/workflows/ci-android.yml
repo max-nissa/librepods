@@ -4,9 +4,12 @@ name: Android CI
 # Nothing is published: no Play Store bundle, no GitHub release, no Discord post.
 
 on:
+  # Branch pushes are covered by the pull_request run; building them on push
+  # too would build every PR commit twice. main is built on push so its APKs
+  # can be reused by the Android Release workflow.
   push:
     branches:
-      - '*'
+      - main
     paths:
       - 'android/**'
       - '.github/workflows/ci-android.yml'
@@ -21,6 +24,18 @@ on:
         required: true
         default: main
   workflow_call:
+    inputs:
+      ref:
+        description: Branch, tag or commit to build
+        type: string
+        required: false
+        default: ''
+
+# A newer push to the same PR/branch cancels the run it supersedes.
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.ref || github.event.pull_request.number || github.ref }}
+  # Only PR runs are cancelled; every main commit keeps its build and analysis.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -31,12 +46,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.branch || github.ref }}
+          ref: ${{ inputs.ref || inputs.branch || github.ref }}
       - uses: actions/setup-java@v4
         with:
           distribution: zulu
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # Lets setup-gradle also cache the configuration cache (enabled in
+          # gradle.properties). Optional: without the secret it is just skipped.
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -61,8 +80,8 @@ jobs:
           RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
           EOF
 
-      - name: Build APKs
-        run: ./gradlew assembleFossDebug assembleFossRelease
+      - name: Build APKs and root module zips
+        run: ./gradlew assembleFossDebug assembleFossRelease zipDebugModule zipReleaseModule
         working-directory: android
 
       - uses: actions/upload-artifact@v4
@@ -74,3 +93,8 @@ jobs:
         with:
           name: apk-release
           path: android/app/build/outputs/apk/foss/release/*.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: root-module-zips
+          path: android/app/build/outputs/rootModuleZips/*.zip

@@ -15,6 +15,11 @@ on:
     - cron: '27 3 * * 1'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Only PR runs are cancelled; every main commit keeps its build and analysis.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
@@ -67,11 +72,15 @@ jobs:
         run: |
           yes | sdkmanager --licenses
           sdkmanager "ndk;30.0.14904198"
-      - name: Build Android app
+      - name: Compile Android app
         if: matrix.build-mode == 'manual'
         working-directory: android
-        # CodeQL must see the Kotlin compiler run, so disable build caching.
-        run: ./gradlew assembleFossDebug --no-daemon --no-build-cache --rerun-tasks
+        # CodeQL extracts Java/Kotlin by tracing the compilers, so the sources
+        # must really be compiled here: a prebuilt APK or cached task outputs
+        # cannot be reused (hence --no-build-cache --rerun-tasks).
+        # Only compile the sources: packaging, dexing and the native CMake build
+        # add nothing to the java-kotlin database (C/C++ is scanned separately).
+        run: ./gradlew :app:compileFossDebugSources --no-daemon --no-build-cache --rerun-tasks
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
