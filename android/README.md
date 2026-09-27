@@ -2,7 +2,7 @@
 
 LibrePods *may* require root depending on your device/OS and what features you want access to:
 
-- Features requiring the VendorID hook ([the features marked with an asterisk here](https://github.com/kavishdevar/librepods#key-features)) will always require root regardless of your device/OS.
+- Features requiring the VendorID hook ([the features marked with an asterisk here](/README.md#feature-availability)) will always require root regardless of your device/OS.
 - On **ColorOS/OxygenOS 16 and realme UI 7.0** and **Pixel devices on Android 16 QPR3** (with the latest Google Play system update), LibrePods does not need root for most features.
 - On other devices, LibrePods needs root because of a bug in the Android Bluetooth stack Fluoride/non-compliance of Apple with Bluetooth standards. You must have Xposed installed for the app to workaround this bug and connect to AirPods. [This issue is being tracked here](https://issuetracker.google.com/issues/371713238). **Please do not comment on the issue thread.** The issue has already been resolved and should be available in **Android 17** for all devices.
 
@@ -20,7 +20,7 @@ If you are using a supported device/OS combination, you can install LibrePods fr
 
 ### GitHub Releases
 
-If you need xposed because of the [root requirement](#root-requirement), you will have to use the apk/zip from the [GitHub releases](https://github.com/kavishdevar/librepods/releases/latest).
+If you need xposed because of the [root requirement](#root-requirement), you will have to use the apk/zip from the [GitHub releases](https://github.com/max-nissa/librepods/releases/latest).
 
 ### As a system app (root module)
 
@@ -36,7 +36,7 @@ you can install the root module. This is optional and only provides extra featur
 
 ## Nightly/Development Builds
 
-Want to try the latest features before they're officially released? You can grab nightly builds from the [latest nightly release](https://github.com/kavishdevar/librepods/releases?q=nightly).
+Want to try the latest features before they're officially released? You can grab nightly builds from the [Android CI artifacts](https://github.com/max-nissa/librepods/actions/workflows/ci-android.yml).
 
 > [!WARNING]
 > These builds are automatically generated from the latest code and may contain new features and bug fixes that haven't been included in a stable release yet. However, please note that they may also be less stable than official releases, so use them at your own risk.

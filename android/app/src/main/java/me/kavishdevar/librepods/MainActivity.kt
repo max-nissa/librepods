@@ -48,7 +48,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.android.play.core.review.ReviewManagerFactory
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import me.kavishdevar.librepods.data.AirPodsNotifications
 import me.kavishdevar.librepods.data.ControlCommandRepository
@@ -231,15 +230,4 @@ fun Main() {
         },
         airPodsViewModel = airPodsViewModel
     )
-}
-
-private fun triggerReviewFlow(activity: Activity) {
-    val manager = ReviewManagerFactory.create(activity)
-    val request = manager.requestReviewFlow()
-    request.addOnCompleteListener { task ->
-        if (task.isSuccessful) {
-            val reviewInfo = task.result
-            manager.launchReviewFlow(activity, reviewInfo)
-        }
-    }
 }

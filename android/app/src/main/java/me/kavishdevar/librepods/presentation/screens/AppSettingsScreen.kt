@@ -25,10 +25,8 @@ import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -40,8 +38,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,24 +50,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
-import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -80,9 +68,6 @@ import me.kavishdevar.librepods.BuildConfig
 import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.presentation.components.AppInfoCard
 import me.kavishdevar.librepods.presentation.components.DeviceInfoCard
-import me.kavishdevar.librepods.presentation.components.StyledBottomSheet
-import me.kavishdevar.librepods.presentation.components.StyledIconButton
-import me.kavishdevar.librepods.presentation.components.StyledInputField
 import me.kavishdevar.librepods.presentation.components.StyledList
 import me.kavishdevar.librepods.presentation.components.StyledListItem
 import me.kavishdevar.librepods.presentation.components.StyledSlider
@@ -106,12 +91,6 @@ fun AppSettingsScreen(
     val state by viewModel.uiState.collectAsState()
 
     val backdrop = rememberLayerBackdrop()
-
-    val contactBottomSheet = remember { mutableStateOf(false) }
-    val subjectState = remember { TextFieldState() }
-    val descriptionState = remember { TextFieldState() }
-    val subjectFocusRequester = remember { FocusRequester() }
-    val descriptionFocusRequester = remember { FocusRequester() }
 
     val m3eEnabled = LocalDesignSystem.current == DesignSystem.Material
     val topPadding = if (m3eEnabled) 16.dp else WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 84.dp
@@ -328,20 +307,6 @@ fun AppSettingsScreen(
 
         StyledList(title = stringResource(R.string.contact)) {
             StyledListItem(
-                name = stringResource(R.string.email),
-                onClick = { contactBottomSheet.value = true },
-            )
-
-            StyledListItem(
-                name = stringResource(R.string.discord),
-                onClick = {
-                    val intent =
-                        Intent(Intent.ACTION_VIEW, "https://discord.gg/Ts4wupXcmc".toUri())
-                    context.startActivity(intent)
-                },
-            )
-
-            StyledListItem(
                 name = stringResource(R.string.github_issues),
                 onClick = {
                     val appVersion =
@@ -354,7 +319,7 @@ fun AppSettingsScreen(
                             else -> "GitHub"
                         }
                     )
-                    val url = "https://github.com/kavishdevar/librepods/issues/new" +
+                    val url = "https://github.com/max-nissa/librepods/issues/new" +
                         "?template=01-bug-report-android.yml" +
                         "&app-source=$appSource" +
                         "&app-version=$appVersion" +
@@ -447,98 +412,6 @@ fun AppSettingsScreen(
                     )
                 }
             })
-        }
-    }
-
-    StyledBottomSheet(
-        visible = contactBottomSheet.value,
-        onDismiss = { contactBottomSheet.value = false },
-        backdrop = backdrop
-    ) { innerBackdrop, progress ->
-        val animatedPadding = lerp(16.dp, 2.dp, progress)
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = animatedPadding)
-                .padding(bottom = 16.dp),
-        ) {
-           Row(
-               modifier = Modifier
-                   .fillMaxWidth()
-                   .padding(bottom = 16.dp),
-               horizontalArrangement = Arrangement.SpaceBetween,
-               verticalAlignment = Alignment.CenterVertically
-           ) {
-               StyledIconButton(
-                   icon = "\uDBC0\uDD84",
-                   backdrop = innerBackdrop,
-                   onClick = { contactBottomSheet.value = false }
-               )
-               Text (
-                   text = stringResource(R.string.describe_your_issue),
-                   style = TextStyle(
-                       fontSize = 18.sp,
-                       fontFamily = FontFamily(Font(R.font.sf_pro)),
-                       fontWeight = FontWeight.Bold,
-                       textAlign = TextAlign.Center,
-                       color = if (isSystemInDarkTheme()) Color.White else Color.Black
-                   )
-               )
-               StyledIconButton(
-                   icon = "\uDBC0\uDE1F",
-                   backdrop = innerBackdrop,
-                   surfaceColor = if (isSystemInDarkTheme()) Color(0xFF0091FF) else Color(0xFF0088FF),
-                   iconTint = if (subjectState.text.isNotEmpty() && descriptionState.text.isNotEmpty()) Color.White else Color.Gray,
-                   enabled = subjectState.text.isNotEmpty() && descriptionState.text.isNotEmpty(),
-                   onClick = {
-                       contactBottomSheet.value = false
-                       val intent = Intent(Intent.ACTION_SENDTO).apply {
-                           data = "mailto:".toUri()
-                           putExtra(Intent.EXTRA_EMAIL, arrayOf("contact@kavish.xyz"))
-                           putExtra(Intent.EXTRA_SUBJECT, "LibrePods: ${subjectState.text}")
-                           putExtra(
-                               Intent.EXTRA_TEXT,
-                               "${descriptionState.text}" +
-                                   "\n\n----------" +
-                                   "\nPhone details:" +
-                                   "\nMANUFACTURER: ${Build.MANUFACTURER}" +
-                                   "\nMODEL: ${Build.MODEL} (${Build.PRODUCT})" +
-                                   "\nDISPLAY_VERSION: ${Build.DISPLAY}" +
-                                   "\nID: ${Build.ID} (SDK ${Build.VERSION.SDK_INT_FULL})" +
-                                   "\nXposed enabled/active: ${XposedState.isAvailable}/${XposedState.bluetoothScopeEnabled}" +
-                                   "\n\nApp details:" +
-                                   "\nVERSION: ${BuildConfig.VERSION_NAME}" +
-                                   "\nVERSION_CODE: ${BuildConfig.VERSION_CODE}" +
-                                   "\nFLAVOR: ${BuildConfig.FLAVOR}" +
-                                   "\nBUILD_TYPE: ${BuildConfig.BUILD_TYPE}"
-                           )
-                       }
-                       context.startActivity(intent)
-                       subjectState.clearText()
-                       descriptionState.clearText()
-                   }
-               )
-           }
-
-           Spacer(modifier = Modifier.height(8.dp))
-
-           StyledInputField(
-               inputState = subjectState,
-               focusRequester = subjectFocusRequester,
-               placeholder = stringResource(R.string.subject),
-               forceApple = true
-           )
-
-           Spacer(modifier = Modifier.height(12.dp))
-
-           StyledInputField(
-               inputState = descriptionState,
-               focusRequester = descriptionFocusRequester,
-               placeholder = stringResource(R.string.describe_your_issue),
-               singleLine = false,
-               forceApple = true
-           )
         }
     }
 }
