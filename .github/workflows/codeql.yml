@@ -4,6 +4,7 @@ name: CodeQL
 # which cannot build the Android app (it needs the Android SDK and NDK), so
 # java-kotlin is built manually with the same steps as ci-android.yml.
 # The other languages are analysed without a build (build-mode: none).
+# No javascript-typescript: the only .ts files are Qt translations (XML).
 
 on:
   push:
@@ -34,8 +35,6 @@ jobs:
             build-mode: none
           - language: java-kotlin
             build-mode: manual
-          - language: javascript-typescript
-            build-mode: none
           - language: python
             build-mode: none
 
