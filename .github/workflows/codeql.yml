@@ -53,6 +53,10 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          # Vendored third-party code (QR-Code-generator) is not ours to patch.
+          config: |
+            paths-ignore:
+              - linux/thirdparty
 
       # Manual build for java-kotlin, mirroring ci-android.yml.
       - if: matrix.build-mode == 'manual'

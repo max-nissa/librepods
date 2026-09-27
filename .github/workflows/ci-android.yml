@@ -37,6 +37,10 @@ concurrency:
   # Only PR runs are cancelled; every main commit keeps its build and analysis.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Builds and uploads artifacts only; nothing here needs write access.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
