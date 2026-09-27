@@ -66,7 +66,7 @@ fun PrivacyPolicyPage(
             )
 
             Text(
-                text = "LibrePods provides several ways to contact me, including email, Discord, and GitHub Issues.",
+                text = "You can contact me through GitHub Issues.",
                 style = MaterialTheme.typography.bodyMedium
             )
 
@@ -142,7 +142,7 @@ fun PrivacyPolicyPage(
             )
 
             Text(
-                text = "If you have questions about this privacy policy, please contact me via email at privacy@kavish.xyz.",
+                text = "If you have questions about this privacy policy, please open an issue at github.com/max-nissa/librepods/issues.",
                 style = MaterialTheme.typography.bodyMedium
             )
 

@@ -2,6 +2,6 @@ id=librepods
 name=LibrePods
 version=v1.0.0-rc3-free
 versionCode=64
-author=@kavishdevar, @max-nissa
+author=@max-nissa
 description=Installs LibrePods as a system app for granting BLUETOOTH_PRIVILEGED and MODIFY_PHONE_STATE permission for better integraion with android.
 updateJson=https://raw.githubusercontent.com/max-nissa/librepods/main/extras/update_nonpatch.json

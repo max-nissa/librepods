@@ -1,8 +1,3 @@
-> [!WARNING]
-> librepods.org is not an official website of the LibrePods project. It inaccurately claims to be the official website of the project by claiming copyrights and using the LibrePods logo in the footer. And at the same time, they say that the project is not affiliated with the LibrePods project or its developers.
-> 
-> Please report any other such websites to [me@kavish.xyz](mailto:me@kavish.xyz)
- 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./imgs/banner-dark.png" />
   <source media="(prefers-color-scheme: light)" srcset="./imgs/banner.png" />
@@ -19,12 +14,11 @@
 <a href="https://github.com/max-nissa/librepods/issues">
   <img src="https://img.shields.io/github/issues/max-nissa/librepods" />  
 </a>
-<a href="https://discord.gg/HhG4ycVum4">
-  <img src="https://img.shields.io/discord/1441416992027574375?logoColor=white&color=5865F2&label=Discord" />
-</a>
 </div>
 
 # What is LibrePods?
+
+> This repository is a fork of [kavishdevar/librepods](https://github.com/kavishdevar/librepods), maintained by [@max-nissa](https://github.com/max-nissa). All features are free; there is no paid tier.
 
 LibrePods allows you to use AirPods features that are exclusive to Apple devices. It implements the proprietary protocol used to exchange data between AirPods and Apple devices, enabling features like changing noise control modes, fast ear detection, accurate battery status, head gestures, conversational awareness, and more on non-Apple platforms.
 
@@ -106,7 +100,7 @@ All hearing aid customizations can be done from Android (linux soon), including 
 
 Please refer to the Wireshark dissector plugin by Nojus ([@pabloaul](https://github.com/pabloaul)) for more information on the protocols used: [pabloaul/apple-wireshark](https://github.com/pabloaul/apple-wireshark)
 
-The dissector had not been used in LibrePods for most of the implementation; I had reverse engineered the protocol myself before this dissector was made. But many (future) features including two-way high quality audio and spatial audio would not have been possible without their RE efforts!
+The dissector had not been used in LibrePods for most of the implementation; the original author had reverse engineered the protocol before this dissector was made. But many (future) features including two-way high quality audio and spatial audio would not have been possible without their RE efforts!
 
 # Use of AI
 
@@ -121,94 +115,10 @@ Rest everything- the background service, the Bluetooth manager classes (AACP and
 
 Some parts of the UI components were borrowed from [Kyant0's demo app](https://github.com/Kyant0/AndroidLiquidGlass/tree/master/catalog), which is licensed under [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-## Linux (rewrite)
-
-The `aacp.rs` and the `att.rs` files were translated from Kotlin to Rust with AI. Some parts of the `media_controller.rs` file, mainly the pulse integration, was also AI-generated.
-
-# Supporters
-
-A huge thank you to everyone supporting the project!
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/davdroman">
-        <img src="https://github.com/davdroman.png?size=48" width="48" height="48"alt="davdroman"/><br />
-        @davdroman
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/tedsalmon">
-        <img src="https://github.com/tedsalmon.png?size=48" width="48" height="48"alt="tedsalmon"/><br />
-        @tedsalmon
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/wiless">
-        <img src="https://github.com/wiless.png?size=48" width="48" height="48"alt="wiless"/><br />
-        @wiless
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/SmartMsg">
-        <img src="https://github.com/SmartMsg.png?size=48" width="48" height="48"alt="SmartMsg"/><br />
-        @SmartMsg
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/lunaroyster">
-        <img src="https://github.com/lunaroyster.png?size=48" width="48" height="48"alt="lunaroyster"/><br />
-        @lunaroyster
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/ressiwage">
-        <img src="https://github.com/ressiwage.png?size=48" width="48" height="48"alt="ressiwage"/><br />
-        @ressiwage
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/kkjdroid">
-        <img src="https://github.com/kkjdroid.png?size=48" width="48" height="48"alt="kkjdroid"/><br />
-        @kkjdroid
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/CitrusJoules">
-        <img src="https://github.com/CitrusJoules.png?size=48" width="48" height="48"alt="CitrusJoules"/><br />
-        @CitrusJoules
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/DanielReyesDev">
-        <img src="https://github.com/DanielReyesDev.png?size=48" width="48" height="48"alt="DanielReyesDev"/><br />
-        @DanielReyesDev
-      </a>
-    </td>
-  </tr>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/sumitduster">
-        <img src="https://github.com/sumitduster.png?size=48" width="48" height="48"alt="sumitduster"/><br />
-        @sumitduster
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://github.com/GrifTheDev">
-        <img src="https://github.com/GrifTheDev.png?size=48" width="48" height="48"alt="GrifTheDev"/><br />
-        @GrifTheDev
-      </a>
-    </td>
-  </tr>
-</table>
-
 # Special Thanks
 - @tyalie for making the first documentation on the protocol! ([tyalie/AAP-Protocol-Definition](https://github.com/tyalie/AAP-Protocol-Defintion))
 - @rithvikvibhu and folks over at lagrangepoint for helping with the hearing aid feature ([gist](https://gist.github.com/rithvikvibhu/45e24bbe5ade30125f152383daf07016))
+- @kavishdevar for creating LibrePods, which this fork is based on
 - @devnoname120 for helping with the first root patch
 - @timgromeyer for making the first version of the linux app
 - @hackclub for hosting [High Seas](https://highseas.hackclub.com) and [Low Skies](https://low-skies.hackclub.com)!
@@ -221,11 +131,11 @@ A huge thank you to everyone supporting the project!
 
 # Star History
 
-<a href="https://www.star-history.com/?repos=librepods-org%2Flibrepods&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=max-nissa%2Flibrepods&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=librepods-org/librepods&type=date&theme=dark&legend=top-left&sealed_token=CS9QF2Wcx-_EN6M7lBhwvTa2WBd5eB8FbQa5FWt3SV14v1OcQdy2aCGsXxHoytVaoylP_pTxj1h2U-odoXDV_EwTqMxM-MQwG_WpvV_1g_yH-Jh3ux2BuWCmS98LxLqfox2ibLOlFDHu_-geTLFsTmqTc1SjX6-NYxVHXF5DaqnxFOAyjLPL5_WtXVew" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=librepods-org/librepods&type=date&legend=top-left&sealed_token=CS9QF2Wcx-_EN6M7lBhwvTa2WBd5eB8FbQa5FWt3SV14v1OcQdy2aCGsXxHoytVaoylP_pTxj1h2U-odoXDV_EwTqMxM-MQwG_WpvV_1g_yH-Jh3ux2BuWCmS98LxLqfox2ibLOlFDHu_-geTLFsTmqTc1SjX6-NYxVHXF5DaqnxFOAyjLPL5_WtXVew" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=librepods-org/librepods&type=date&legend=top-left&sealed_token=CS9QF2Wcx-_EN6M7lBhwvTa2WBd5eB8FbQa5FWt3SV14v1OcQdy2aCGsXxHoytVaoylP_pTxj1h2U-odoXDV_EwTqMxM-MQwG_WpvV_1g_yH-Jh3ux2BuWCmS98LxLqfox2ibLOlFDHu_-geTLFsTmqTc1SjX6-NYxVHXF5DaqnxFOAyjLPL5_WtXVew" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=max-nissa/librepods&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=max-nissa/librepods&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=max-nissa/librepods&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -251,7 +161,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 The GPL does not grant any rights to use the LibrePods name, logo, or branding. The LibrePods name and logo may not be used for software, websites, domains, products, services, or other projects in a manner that suggests affiliation with, endorsement by, or association with the official LibrePods project without prior permission.
 
-If you see any misuse of the LibrePods name or logo, please report it to [me@kavish.xyz](mailto:me@kavish.xyz).
+If you see any misuse of the LibrePods name or logo, please report it to the [upstream LibrePods project](https://github.com/kavishdevar/librepods).
 
 The SF Pro font used in the Android app is the property of Apple Inc.. This will be removed in future versions of the app and replaced with an open alternative soon.
 
